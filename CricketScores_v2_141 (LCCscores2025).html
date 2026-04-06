@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cricket Scoreboard 2.141</title>
+<style>
+html, body {
+  height: 100%; margin: 0;
+  background: #070C2E; color: white;
+  font-family: Arial, sans-serif; overflow: hidden;
+}
+.scoreboard-container {
+  position: relative; height: 100vh; width: 100%;
+}
+.scoreboard {
+  display: flex; flex-direction: column;
+  justify-content: space-around; align-items: center;
+  height: 100%;
+}
+.teams {
+  display: flex; justify-content: space-between;
+  align-items: center; width: 99%; position: relative;
+}
+.team { text-align: center; flex: 1; position: relative; }
+
+.team-logo {
+  max-height: 18vw;
+  display: block;
+  margin: 0 auto -2px auto;
+}
+
+.score {
+  font-size: 16.5vw; font-weight: bold;
+  margin: -2px 0 -2px 0;
+  min-height: 16.5vw;
+  display: flex; justify-content: center; align-items: center;
+  color: white;
+  -webkit-text-stroke-width: 2.3px;
+  -webkit-text-stroke-color: green; 
+}
+.score#scoreB {
+  -webkit-text-stroke-color: red;
+}
+.score.yet-to-bat { font-size: 6.76vw; font-style: italic; color: #dfdfe5; -webkit-text-stroke-color: #dfdfe5; }
+
+.overs { font-size: 7vw; color: #00ff99; margin-top: -2px; height: 9vw; } 
+.overs span { font-size: 8.5vw; }
+
+/* Run rate style - same as overs */
+.runrate { font-size: 6vw; color: #fff38a; margin-top: -2px; height: 9vw; }
+.runrate span { font-size: 6vw; }
+
+.center-line {
+  position: absolute; top: 30%; height: 30%; left: 50%;
+  width: 5px; background-color: rgba(128,128,128,0.6);
+  z-index: 0; 
+}
+
+/* Score flash animation */
+.score-flash { animation: flashScore 0.6s ease-in-out; }
+@keyframes flashScore {
+  0% { transform: scale(1); color: yellow; }
+  50% { transform: scale(1.4); color: orange; }
+  100% { transform: scale(1); color: white; }
+}
+
+/* Wicket overlay and animation */
+.wicket { position:absolute; width:75px; height:675px; background:tan; top:35%; left:50%; transform:translateX(-50%); z-index:1000; opacity:1; transition:opacity 2.66s ease-in-out; }
+.bail { position:absolute; width:210px; height:36px; background:rgb(158,135,105); z-index:1000; top:32%; left:50%; transform:translateX(-50%); }
+@keyframes bailFly { 0% {opacity:1; transform:translateX(-50%) translateY(0px) rotate(0deg);} 100% {opacity:0; transform:translateX(-50%) translateY(-500px) rotate(720deg);} }
+
+.wicket-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.9); font-size:15vw; font-weight:bold; color:rgb(238, 255, 0); text-shadow:0 0 20px #00ff00,0 0 50px #00ff00; pointer-events:none; z-index:2000; animation: fadeOutWicket 7s forwards; }
+@keyframes fadeOutWicket { 0%{opacity:1; transform:translate(-50%,-50%) scale(0.9);} 50%{opacity:1; transform:translate(-50%,-50%) scale(1.35);} 100%{opacity:0; transform:translate(-50%,-50%) scale(1.8);} }
+
+.giant-score { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:42vw; font-weight:bold; color:yellow; text-shadow:0 0 30px orange,0 0 60px red; pointer-events:none; z-index:2000; animation:fadeOut 6s forwards; }
+@keyframes fadeOut { 0%{opacity:1; transform:translate(-50%,-50%) scale(1);} 50%{opacity:1; transform:translate(-50%,-50%) scale(1.5);} 100%{opacity:0; transform:translate(-50%,-50%) scale(2);} }
+
+.star { position:absolute; width:8px; height:8px; background:rgb(43,255,0); clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%); opacity:0.9; pointer-events:none; animation:starFly 1.2s ease-out forwards; }
+@keyframes starFly { 0%{transform:translate(0,0) scale(1); opacity:1;} 100%{transform:translate(var(--dx), var(--dy)) scale(0.5); opacity:0;} }
+
+
+/* Cricket Ball Animation */
+.cricket-ball {
+  position: absolute;
+  top: 25%;
+  left: -50vh;
+  width: 50vh;
+  height: 50vh;
+  background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000 80%);
+  border-radius: 50%;
+  filter: blur(0.8px);
+  box-shadow:0 0 30px rgba(255,0,0,0.8),0 0 60px rgba(255,200,0,0.5), inset -8px -8px 12px rgba(0,0,0,0.5), inset 8px 8px 15px rgba(255,255,255,0.2);
+  animation: ballFly 3s linear forwards;
+  z-index: 1999;
+  overflow: hidden;
+}
+.cricket-ball::before {
+  content: "";
+  position: absolute; top:0; left:49%; width:2%; height:100%; border-left:3px solid #fff; border-right:3px solid #fff; border-radius:50%;
+  opacity:0.9; transform: rotate(20deg);
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 6px, #fff 6px, #fff 8px);
+  background-size: 100% 8px;
+  box-shadow:0 0 5px rgba(255,255,255,0.5);
+}
+@keyframes ballFly { 0% { left: -50vh; transform: rotate(0deg);} 100% { left: 100vw; transform: rotate(720deg);} }
+
+.cricket-bat { position: fixed; bottom:12px; left:50%; transform:translateX(-50%); width:160px; height:auto; opacity:0.95; z-index:10; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div class="scoreboard-container">
+  <div class="scoreboard">
+    <div class="teams">
+      <div class="center-line"></div>
+      <div class="team">
+        <img class="team-logo" id="logoA" src="Files/LYNDOCH.png" alt="Team A Logo">
+        <div class="score yet-to-bat" id="scoreA">yet to bat</div>
+        <div class="overs" id="oversContainerA" style="visibility:hidden;">Overs: <span id="oversA">0.0</span></div>
+        <div class="runrate" id="runRateA" style="visibility:hidden;">Run rate: <span id="rrA">0.00</span></div>
+        <div class="runrate" id="rrrA" style="visibility:hidden;">RRR: <span id="rrrAValue">0.00</span></div>
+      </div>
+      <div class="team">
+        <img class="team-logo" id="logoB" src="Files/Visitors.png" alt="Team B Logo">
+        <div class="score yet-to-bat" id="scoreB">yet to bat</div>
+        <div class="overs" id="oversContainerB" style="visibility:hidden;">Overs: <span id="oversB">0.0</span></div>
+        <div class="runrate" id="runRateB" style="visibility:hidden;">Run rate: <span id="rrB">0.00</span></div>
+        <div class="runrate" id="rrrB" style="visibility:hidden;">RRR: <span id="rrrBValue">0.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <img id="bat" src="Files/batpic2.png" alt="Cricket Bat" class="cricket-bat">
+  <img id="logo" src="Files/LCClogo.png" alt="Logo" style="position:absolute;top:15px;left:50%;transform:translateX(-50%);width:200px;z-index:2;opacity:1;">
+</div>
+
+<script>
+
+// --- Protection (obfuscated|base64-encoded) ---
+const encodedPassword = "TENDc2NvcmVzMjAyNQ==";
+
+function decodeBase64(str) {
+  return atob(str);
+}
+
+const entered = prompt("Enter password to access Cricket Scoreboard:");
+if (entered !== decodeBase64(encodedPassword)) {
+  alert("Incorrect password. Access denied.");
+  document.body.innerHTML = "<h1 style='color:white;text-align:center;margin-top:20%'>Access Denied</h1>";
+  throw new Error("Unauthorized access blocked.");
+}
+
+// State
+let runsA=0,wicketsA=0,ballsA=0;
+let runsB=0,wicketsB=0,ballsB=0;
+let inningsEndedA=false, inningsEndedB=false;
+let controlWin=null;
+
+// ---------- Open Control Window ----------
+function openControlWindow(){
+  if(controlWin && !controlWin.closed) return;
+  controlWin = window.open('', '', 'width=600,height=600,left=100,top=100');
+
+  controlWin.document.write(`
+<html>
+<head>
+<title>Scoring Control</title>
+<style>
+body { background:#111; color:white; font-family: Arial,sans-serif; text-align:center; }
+select { font-size:1.5vw; margin-bottom:10px; padding:5px; border-radius:5px; }
+.mirror-score { font-size: calc(2.5vw * 1.10); margin:5px 0; text-align:center; color:white; }
+.overs-control { color:#00ff99; margin-bottom:5px; }
+.control-group { display:flex; justify-content: space-around; margin-top:5px; }
+.button-column { display:flex; flex-direction:column; align-items:center; gap:10px; }
+button { font-size:1.5vw; padding:10px 20px; border:none; border-radius:10px; font-weight:bold; color:darkblue; cursor:pointer; }
+button:hover { background:#555; }
+.btn-6 { background:red; } .btn-4 { background:green; }
+.btn-wkt { background:pink; } .btn-ball { background:orange; } .btn-run { background:lightblue; }
+#sectionA { border:3px solid green; padding:10px; margin-bottom:10px; }
+#sectionB { border:3px solid red; padding:10px; margin-bottom:10px; }
+.reset-btn { font-size:1.5vw; padding:10px 20px; margin-top:10px; display:block; margin-left:auto; margin-right:auto; color:white; font-weight:normal; background:red; }
+.footer-text { color: gray; margin-top: 5px; font-size: 1vw; }
+</style>
+</head>
+<body>
+<div id="sectionA">
+<select id="teamSelectA" onchange="opener.updateTeamLogo('A', this.value)">
+  <option value="Files/Lyndoch.png">Lyndoch</option>
+  <option value="Files/Angaston.png">Angaston</option>
+  <option value="Files/Eudunda.png">Eudunda</option>
+  <option value="Files/Eud_Rob.png">Eudunda Roberstown</option>
+  <option value="Files/Freeling.png">Freeling</option>
+  <option value="Files/Gawler_Central.png">Gawler Central</option>
+  <option value="Files/Gilbert_Valley.png">Gilbert Valley</option>
+  <option value="Files/Greenock.png">Greenock</option>
+  <option value="Files/Kapunda.png">Kapunda</option>
+  <option value="Files/Light_Pass.png">Light Pass</option>
+  <option value="Files/Long_Plains.png">Long Plains</option>
+  <option value="Files/Mallala.png">Mallala</option>
+  <option value="Files/Mal_Fre.png">Mallala Freeling</option>
+  <option value="Files/Nuri.png">Nuri</option>
+  <option value="Files/Sandy_Creek.png">Sandy Creek</option>
+  <option value="Files/South_Gawler.png">South Gawler</option>
+  <option value="Files/Tanunda.png">Tanunda</option>
+  <option value="Files/Willaston.png">Willaston</option>
+  <option value="Files/Home.png">Home</option>
+  <option value="Files/Visitors.png">Visitors</option>
+</select>
+<div class="mirror-score" id="mirrorScoreA">yet to bat</div>
+<div class="mirror-score overs-control">Overs: <span id="mirrorOversA">0.0</span></div>
+<div class="control-group">
+<div class="button-column">
+<button class="btn-wkt" onclick="opener.hitWicket('A')">+ Wkt</button>
+<button class="btn-wkt" onclick="opener.changeWickets('A',-1)">– Wkt</button>
+</div>
+<div class="button-column">
+<button class="btn-run" onclick="opener.changeRuns('A',1)">+ Run</button>
+<button class="btn-6" onclick="opener.hitFourSix('A',6)">6</button>
+</div>
+<div class="button-column">
+<button class="btn-run" onclick="opener.changeRuns('A',-1)">– Run</button>
+<button class="btn-4" onclick="opener.hitFourSix('A',4)">4</button>
+</div>
+<div class="button-column">
+<button class="btn-ball" onclick="opener.changeOver('A',1)">+ Ball</button>
+<button class="btn-ball" onclick="opener.changeOver('A',-1)">– Ball</button>
+</div>
+</div>
+<!-- toggle button with id -->
+<button id="toggleEndA" class="btn-run" onclick="opener.toggleEndInnings('A')">Close Innings</button>
+</div>
+
+<div id="sectionB">
+<select id="teamSelectB" onchange="opener.updateTeamLogo('B', this.value)">
+  <option value="Files/Lyndoch.png">Lyndoch</option>
+  <option value="Files/Angaston.png">Angaston</option>
+  <option value="Files/Eudunda.png">Eudunda</option>
+  <option value="Files/Eud_Rob.png">Eudunda Roberstown</option>
+  <option value="Files/Freeling.png">Freeling</option>
+  <option value="Files/Gawler_Central.png">Gawler Central</option>
+  <option value="Files/Gilbert_Valley.png">Gilbert Valley</option>
+  <option value="Files/Greenock.png">Greenock</option>
+  <option value="Files/Kapunda.png">Kapunda</option>
+  <option value="Files/Light_Pass.png">Light Pass</option>
+  <option value="Files/Long_Plains.png">Long Plains</option>
+  <option value="Files/Mallala.png">Mallala</option>
+  <option value="Files/Mal_Fre.png">Mallala Freeling</option>
+  <option value="Files/Nuri.png">Nuri</option>
+  <option value="Files/Sandy_Creek.png">Sandy Creek</option>
+  <option value="Files/South_Gawler.png">South Gawler</option>
+  <option value="Files/Tanunda.png">Tanunda</option>
+  <option value="Files/Willaston.png">Willaston</option>
+  <option value="Files/Home.png">Home</option>
+  <option value="Files/Visitors.png">Visitors</option>
+</select>
+<div class="mirror-score" id="mirrorScoreB">yet to bat</div>
+<div class="mirror-score overs-control">Overs: <span id="mirrorOversB">0.0</span></div>
+<div class="control-group">
+<div class="button-column">
+<button class="btn-wkt" onclick="opener.hitWicket('B')">+ Wkt</button>
+<button class="btn-wkt" onclick="opener.changeWickets('B',-1)">– Wkt</button>
+</div>
+<div class="button-column">
+<button class="btn-run" onclick="opener.changeRuns('B',1)">+ Run</button>
+<button class="btn-6" onclick="opener.hitFourSix('B',6)">6</button>
+</div>
+<div class="button-column">
+<button class="btn-run" onclick="opener.changeRuns('B',-1)">– Run</button>
+<button class="btn-4" onclick="opener.hitFourSix('B',4)">4</button>
+</div>
+<div class="button-column">
+<button class="btn-ball" onclick="opener.changeOver('B',1)">+ Ball</button>
+<button class="btn-ball" onclick="opener.changeOver('B',-1)">– Ball</button>
+</div>
+</div>
+<!-- toggle button with id -->
+<button id="toggleEndB" class="btn-run" onclick="opener.toggleEndInnings('B')">Close Innings</button>
+</div>
+
+<!-- Batting overs at the very top -->
+<div style="text-align: center; margin-top: 5px; color: white; font-size: 1.3vw;">
+  Batting overs:
+  <input type="number" id="battingOvers" value="40" min="1"
+         style="width: 120px; height: 40px; font-size: 1.2vw; text-align: center; border-radius: 6px; border: none; padding: 3px;">
+  <span style="margin-left: 10px;">(See instruction manual for resetting mid-game)</span>
+</div>
+
+<!-- Reset button centered below -->
+<div style="text-align: center; margin-top: 10px;">
+  <button class="reset-btn" onclick="opener.resetScores()" style="width: 120px; height: 40px; font-size: 1.2vw;">Reset</button>
+</div>
+
+<!-- Footer text further down -->
+<div class="footer-text" style="margin-top: 30px;">LCC | AC v2.141 (C) 2025</div>
+
+</body>
+</html>
+  `);
+
+  // After writing, ensure the button labels match current state (in case reopening)
+  controlWin.onload = function(){
+    try {
+      const aBtn = controlWin.document.getElementById('toggleEndA');
+      const bBtn = controlWin.document.getElementById('toggleEndB');
+      if(aBtn) aBtn.textContent = inningsEndedA ? "Reopen Innings" : "Close Innings";
+      if(bBtn) bBtn.textContent = inningsEndedB ? "Reopen Innings" : "Close Innings";
+    } catch(e){
+      // cross-window timing — safe to ignore
+    }
+  };
+}
+
+// ---------- Update logo ----------
+function updateTeamLogo(team, logoFile){
+  if(team==='A'){document.getElementById('logoA').src=logoFile;}
+  else{document.getElementById('logoB').src=logoFile;}
+}
+
+// ---------- Utility ----------
+function formatOvers(b){ return Math.floor(b/6) + "." + b%6; }
+function calcRunRate(runs, balls){ return balls>0 ? (runs/(balls/6)).toFixed(2) : "0.00"; }
+
+// ---------- Update display ----------
+function updateDisplay() {
+  const teams = [
+    {
+      score: runsA, wickets: wicketsA, balls: ballsA, ended: inningsEndedA,
+      scoreEl: document.getElementById("scoreA"),
+      oversEl: document.getElementById("oversContainerA"),
+      rrEl: document.getElementById("runRateA"),
+      strokeColor: "green"
+    },
+    {
+      score: runsB, wickets: wicketsB, balls: ballsB, ended: inningsEndedB,
+      scoreEl: document.getElementById("scoreB"),
+      oversEl: document.getElementById("oversContainerB"),
+      rrEl: document.getElementById("runRateB"),
+      strokeColor: "red"
+    }
+  ];
+
+  // Get total overs from control window (default 40)
+  const totalOvers = controlWin ? parseFloat(controlWin.document.getElementById("battingOvers").value) || 40 : 40;
+
+  teams.forEach((t, idx) => {
+    // --- Main scoreboard ---
+    if (t.ended) {
+      t.scoreEl.innerText = t.score;
+      t.scoreEl.style.color = "#FCD60E";
+      t.oversEl.style.visibility = "hidden";
+      t.rrEl.style.visibility = "hidden";
+      t.scoreEl.classList.remove("yet-to-bat");
+      t.scoreEl.style.webkitTextStrokeColor = t.strokeColor;
+    } else if (t.wickets === 10) {
+      t.scoreEl.innerText = t.score;
+      t.scoreEl.style.color = "#FCD60E";
+      t.oversEl.innerHTML = `all out<br>${formatOvers(t.balls)} overs`;
+      t.oversEl.style.visibility = "visible";
+      t.rrEl.style.visibility = "hidden"; // RR hidden on all out
+      t.scoreEl.classList.remove("yet-to-bat");
+      t.scoreEl.style.webkitTextStrokeColor = t.strokeColor;
+    } else if (t.score === 0 && t.wickets === 0 && t.balls === 0) {
+      t.scoreEl.innerText = "yet to bat";
+      t.scoreEl.classList.add("yet-to-bat");
+      t.scoreEl.style.color = idx === 0 ? "#b0b0b0" : "#dfdfe5";
+      t.scoreEl.style.webkitTextStrokeColor = t.strokeColor;
+      t.oversEl.style.visibility = "hidden";
+      t.rrEl.style.visibility = "hidden";
+    } else {
+      t.scoreEl.innerText = `${t.wickets}/${t.score}`;
+      t.scoreEl.classList.remove("yet-to-bat");
+      t.scoreEl.style.color = "white";
+      t.scoreEl.style.webkitTextStrokeColor = t.strokeColor;
+      t.oversEl.innerText = `Overs: ${formatOvers(t.balls)}`;
+      t.oversEl.style.visibility = "visible";
+
+      // --- Run Rate / Required Run Rate logic ---
+      let rrrVisible = false;
+      let rrrText = "";
+
+      // Determine if team is batting first or second
+      if (!inningsEndedA && !inningsEndedB) {
+        // First innings in progress
+        rrrVisible = true;
+        rrrText = `Run rate: <span>${calcRunRate(t.score, t.balls)}</span>`;
+      } else if (!inningsEndedA && inningsEndedB) {
+        // Team A batting second
+        if (idx === 0) {
+          const runsRequired = (runsB + 1) - runsA;
+          const ballsRemaining = Math.max(totalOvers * 6 - ballsA, 0.1);
+          const rrr = (runsRequired / (ballsRemaining / 6)).toFixed(2);
+          rrrVisible = true;
+          rrrText = `RRR: <span>${rrr}</span>`;
+        }
+      } else if (!inningsEndedB && inningsEndedA) {
+        // Team B batting second
+        if (idx === 1) {
+          const runsRequired = (runsA + 1) - runsB;
+          const ballsRemaining = Math.max(totalOvers * 6 - ballsB, 0.1);
+          const rrr = (runsRequired / (ballsRemaining / 6)).toFixed(2);
+          rrrVisible = true;
+          rrrText = `RRR: <span>${rrr}</span>`;
+        }
+      }
+
+      t.rrEl.style.visibility = rrrVisible ? "visible" : "hidden";
+      if (rrrVisible) t.rrEl.innerHTML = rrrText;
+    }
+
+    // --- Control window mirrors (scores & overs only) ---
+    if (controlWin && !controlWin.closed) {
+      try {
+        const mirrorScoreEl = controlWin.document.getElementById(idx === 0 ? "mirrorScoreA" : "mirrorScoreB");
+        const mirrorOversEl = controlWin.document.getElementById(idx === 0 ? "mirrorOversA" : "mirrorOversB");
+
+        if (t.ended) {
+          mirrorScoreEl.innerText = t.score;
+          mirrorOversEl.innerText = '';
+        } else if (t.wickets === 10) {
+          mirrorScoreEl.innerText = t.score;
+          mirrorOversEl.innerText = `all out ${formatOvers(t.balls)} overs`;
+        } else if (t.score === 0 && t.wickets === 0 && t.balls === 0) {
+          mirrorScoreEl.innerText = "yet to bat";
+          mirrorOversEl.innerText = "0.0";
+        } else {
+          mirrorScoreEl.innerText = `${t.wickets}/${t.score}`;
+          mirrorOversEl.innerText = formatOvers(t.balls);
+        }
+
+        // Update toggle button label
+        const toggleBtnId = idx === 0 ? "toggleEndA" : "toggleEndB";
+        const toggleBtn = controlWin.document.getElementById(toggleBtnId);
+        if (toggleBtn) toggleBtn.textContent = t.ended ? "Reopen Innings" : "Close Innings";
+
+      } catch (e) { /* Ignore timing issues */ }
+    }
+  });
+}
+
+// ---------- Score functions ----------
+function changeRuns(team,delta){
+  if((team==='A' && inningsEndedA) || (team==='B' && inningsEndedB)) return;
+  if(team==='A'){ runsA = Math.max(0, runsA + delta); } else { runsB = Math.max(0, runsB + delta); }
+  updateDisplay();
+}
+function changeWickets(team,delta){
+  if((team==='A' && inningsEndedA) || (team==='B' && inningsEndedB)) return;
+  if(team==='A'){ wicketsA = Math.max(0, Math.min(10, wicketsA + delta)); } else { wicketsB = Math.max(0, Math.min(10, wicketsB + delta)); }
+  updateDisplay();
+}
+function changeOver(team,delta){
+  if((team==='A' && inningsEndedA) || (team==='B' && inningsEndedB)) return;
+  if(team==='A'){ ballsA = Math.max(0, ballsA + delta); } else { ballsB = Math.max(0, ballsB + delta); }
+  updateDisplay();
+}
+function resetScores(){
+  runsA=wicketsA=ballsA=0; runsB=wicketsB=ballsB=0;
+  inningsEndedA = false; inningsEndedB = false;
+  // update control window toggle labels if control open
+  if(controlWin && !controlWin.closed){
+    try{
+      const aBtn = controlWin.document.getElementById('toggleEndA');
+      const bBtn = controlWin.document.getElementById('toggleEndB');
+      if(aBtn) aBtn.textContent = "Close Innings";
+      if(bBtn) bBtn.textContent = "Close Innings";
+    }catch(e){}
+  }
+  updateDisplay();
+}
+
+// ---------- 4/6 animation ----------
+function hitFourSix(team,runs){
+  if((team==='A' && inningsEndedA) || (team==='B' && inningsEndedB)) return;
+  const giant=document.createElement("div"); 
+  giant.classList.add("giant-score"); 
+  giant.innerText=runs; 
+  document.body.appendChild(giant);
+
+  const isSix = runs===6;
+  if(isSix){
+    const ball=document.createElement("div"); ball.classList.add("cricket-ball"); document.body.appendChild(ball);
+    setTimeout(()=>ball.remove(),3500);
+  }
+
+  const starCount = isSix?300:12;
+  const maxX = isSix?700:400; 
+  const minY=isSix? -600:-300; 
+  const maxY=isSix? -200:-100;
+  for(let i=0;i<starCount;i++){
+    const star=document.createElement("div"); star.classList.add("star");
+    const dx=(Math.random()*2*maxX-maxX)+"px"; 
+    const dy=(Math.random()*(maxY-minY)+minY)+"px";
+    const scale=(Math.random()*0.5+0.7).toFixed(2); 
+    const rotate=(Math.random()*360)+"deg";
+    star.style.setProperty('--dx',dx); star.style.setProperty('--dy',dy);
+    star.style.left="50%"; star.style.top="50%"; star.style.transform=`rotate(${rotate}) scale(${scale})`;
+    document.body.appendChild(star);
+    setTimeout(()=>star.remove(),4000);
+  }
+
+  setTimeout(()=>{
+    changeRuns(team,runs);
+    const scoreEl=(team==='A')?document.getElementById("scoreA"):document.getElementById("scoreB");
+    scoreEl.classList.add("score-flash");
+    scoreEl.addEventListener("animationend",()=>scoreEl.classList.remove("score-flash"),{once:true});
+    giant.remove();
+  },4000);
+}
+
+// ---------- Wicket ----------
+function hitWicket(team){
+    if((team==='A' && inningsEndedA) || (team==='B' && inningsEndedB)) return;
+    const stumpWidth=75;
+    const central=document.createElement("div"); central.classList.add("wicket"); central.style.left="50%"; central.style.transform="translateX(-50%)"; document.body.appendChild(central);
+    const left=document.createElement("div"); left.classList.add("wicket"); left.style.left=`calc(50% - ${stumpWidth*2.5}px)`; left.style.transform="none"; document.body.appendChild(left);
+    const right=document.createElement("div"); right.classList.add("wicket"); right.style.left=`calc(50% + ${stumpWidth*1.5}px)`; right.style.transform="none"; document.body.appendChild(right);
+
+    const bailLeft=document.createElement("div"); bailLeft.classList.add("bail"); bailLeft.style.width=`${stumpWidth*2.5}px`; bailLeft.style.left=`calc(50% - ${stumpWidth}px)`; bailLeft.style.top="32%"; bailLeft.style.transform="translateX(-50%)"; document.body.appendChild(bailLeft); bailLeft.style.animation="bailFly 3s forwards";
+    const bailRight=document.createElement("div"); bailRight.classList.add("bail"); bailRight.style.width=`${stumpWidth*2.5}px`; bailRight.style.left=`calc(50% + ${stumpWidth}px)`; bailRight.style.top="32%"; bailRight.style.transform="translateX(-50%)"; document.body.appendChild(bailRight); bailRight.style.animation="bailFly 3s forwards";
+
+    const text=document.createElement("div"); text.classList.add("wicket-text"); text.innerText="WICKET!"; document.body.appendChild(text);
+    setTimeout(()=>{central.remove(); left.remove(); right.remove(); bailLeft.remove(); bailRight.remove(); text.remove();},5000);
+
+    changeWickets(team,1);
+}
+
+// ---------- End Innings toggle (keeps the same name as your code) ----------
+function toggleEndInnings(team){
+  if(team === 'A'){
+    inningsEndedA = !inningsEndedA;
+  } else {
+    inningsEndedB = !inningsEndedB;
+  }
+  // update display
+  updateDisplay();
+
+  // update button label in control window (if present)
+  if(controlWin && !controlWin.closed){
+    try{
+      const aBtn = controlWin.document.getElementById('toggleEndA');
+      const bBtn = controlWin.document.getElementById('toggleEndB');
+      if(aBtn) aBtn.textContent = inningsEndedA ? "Reopen Innings" : "Close Innings";
+      if(bBtn) bBtn.textContent = inningsEndedB ? "Reopen Innings" : "Close Innings";
+    }catch(e){}
+  }
+}
+
+// ---------- Initialize ----------
+openControlWindow();
+updateDisplay();
+</script>
+</body>
+</html>
