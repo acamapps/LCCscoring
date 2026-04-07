@@ -304,6 +304,16 @@ button:hover { background:#555; }
 </html>
   `);
 
+controlWin.document.close();
+
+// Force favicon into the control window
+const link = controlWin.document.createElement("link");
+link.rel = "icon";
+link.type = "image/png";
+link.href = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + "lyn-192.png";
+
+controlWin.document.head.appendChild(link);
+  
   // After writing, ensure the button labels match current state (in case reopening)
   controlWin.onload = function(){
     try {
